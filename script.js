@@ -1,4 +1,4 @@
-(function() {
+(function(root) {
   function Ghostbuster() {
     this.prepare();
     this.start();
@@ -8,14 +8,16 @@
 
     // basic config
     this.CONFIG = {
-      level: 2,
+      level: 1,
       isVisible: 'is-visible',
       primary: '.ui-page--primary',
       select: 'select',
       button: 'button',
       table: 'table',
       td: 'td',
-      selected: 'selected'
+      selected: 'selected',
+      buttonNext: '[data-component="next-level"]',
+      jogada: 0
     }
 
     // first screen
@@ -30,60 +32,73 @@
     this.td;
     this.db = [];
     this.chosen = [];
+
+    // next
+    this.buttonNext = document.querySelector(this.CONFIG.buttonNext);
   }
 
   Ghostbuster.prototype.start = function() {
     this.resetLevels(); // Maybe I can remove this after
-    // this.selectLevel(this.CONFIG.level);
-    // this.gameStart();
-  }
-
-  Ghostbuster.prototype.gameStart = function() {
+    this.selectLevel(this.CONFIG.level);
     this.button.click();
-    window.setTimeout(this.init.bind(this), 1000);
+    this.jogar();
   }
 
-  Ghostbuster.prototype.init = function() {
-    this.getBlocos();
-    this.interval = window.setInterval(this.choice.bind(this), 1200);
+  Ghostbuster.prototype.jogar = function() {
+    this.chosen = [];
+    ++this.CONFIG.jogada
+    this.delay(this.getBlocos, 1000)
+    this.delay(this.choice, 1000);
   }
+
+  Ghostbuster.prototype.delay = function(fn, time) {
+    root.setTimeout(fn.bind(this), time);
+  };
 
   Ghostbuster.prototype.choice = function() {
     var teste = true;
+    var random;
+    var choice;
 
     while(teste) {
-      var random = Math.floor(Math.random() * this.td.length);
+      random = Math.floor(Math.random() * this.td.length);
       if(this.chosen.indexOf(random) == -1 && !this.hasClass(this.td[random], 'is-matched')) {
-        teste = false;
-      }
+        this.chosen.push(random)
+        console.log(this.chosen);
 
-        console.log(random)
-      if(this.chosen.indexOf(random) == -1) {
-        console.log(random)
-        this.chosen.push(random);
+        teste = false
       }
     }
 
-    var choice = this.td[random];
+    choice = this.td[random];
+
     choice.click();
-    this.db.push(choice);
 
-    window.setTimeout(function() {
-      [].forEach.call(this.td, function(c) {
-        if(choice.id !== c.id && choice.id.slice(-1) === c.id.slice(-1)) {
-          c.click();
-          this.db.push(c);
-        }
-      }.bind(this));
-      
-      if(this.chosen.length === this.td.length) {
-        clearInterval(this.interval);
+    [].forEach.call(this.td, function(x) {
+      if(choice.id !== x.id && choice.id.slice(-1) === x.id.slice(-1)) {
+        this.chosen.push([].indexOf.call(this.td, x));
+        console.log(this.chosen);
+        x.click();
       }
-
-      console.log('Total de blocos ', this.td.length, 'Total de random ', this.chosen.length)
-    }.bind(this), 50)
+    }.bind(this));
 
 
+
+    if(this.chosen.length !== this.td.length) {
+      this.delay(this.choice, 1000);
+    } else if(this.CONFIG.jogada < this.levels.length) {
+      // console.log('novamente ', this.CONFIG.jogada)
+      this.delay(this.next, 1500);
+      this.delay(this.again, 1500);
+    }
+  }
+
+  Ghostbuster.prototype.again = function() {
+    this.jogar();
+  }
+
+  Ghostbuster.prototype.next = function() {
+    this.buttonNext.click();
   }
 
   Ghostbuster.prototype.getBlocos = function() {
@@ -91,24 +106,21 @@
   }
 
   Ghostbuster.prototype.selectLevel = function(level) {
-    this.setAtt(this.levels.item(level - 1));
+    this.setAtt(this.levels.item(level - 1), this.CONFIG.selected);
   }
 
   Ghostbuster.prototype.resetLevels = function() {
-    this.forEach(this.levels, this.removeAtt.bind(this, 'teste'), 'mais')
+    this.forEach(this.levels, this.removeAtt.bind(this, this.CONFIG.selected));
   }
-
-
 
 
   // TOOLS
-  Ghostbuster.prototype.setAtt = function(el) {
-    el.setAttribute(this.CONFIG.selected, this.CONFIG.selected);
+  Ghostbuster.prototype.setAtt = function(el, attr) {
+    el.setAttribute(attr, attr);
   }
 
-  Ghostbuster.prototype.removeAtt = function(el, x, w) {
-    debugger;
-    el.removeAttribute(this.CONFIG.selected);
+  Ghostbuster.prototype.removeAtt = function(attr, el, w) {
+    el.removeAttribute(attr);
   }
 
   Ghostbuster.prototype.forEach = function(el, fn) {
@@ -123,5 +135,8 @@
     return (element.className).indexOf(clss) > -1;
   }
 
-  new Ghostbuster();
-})();
+  root.Ghostbuster = Ghostbuster;
+
+  new root.Ghostbuster();
+
+})(window);
