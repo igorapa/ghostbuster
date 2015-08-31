@@ -1,7 +1,7 @@
 (function(root) {
   function Ghostbuster() {
     this.prepare();
-    this.start();
+    this.startGame();
   }
 
   Ghostbuster.prototype.prepare = function() {
@@ -9,92 +9,127 @@
     // basic config
     this.CONFIG = {
       level: 1,
+      isMatched: 'is-matched',
       isVisible: 'is-visible',
       primary: '.ui-page--primary',
       select: 'select',
-      button: 'button',
+      buttonStart: '[name=start]',
       table: 'table',
       td: 'td',
       selected: 'selected',
       buttonNext: '[data-component="next-level"]',
-      jogada: 0
+      shot: 1
     }
 
     // first screen
     this.primary = document.querySelector(this.CONFIG.primary);
     this.levels = document.querySelector(this.CONFIG.select).options;
-    this.button = document.querySelector(this.CONFIG.button);
-
-    // if (this.hasClass(this.primary, this.CONFIG.isVisible)) {}
+    this.buttonStart = document.querySelector(this.CONFIG.buttonStart);
 
     // second screen
     this.table = document.querySelector(this.CONFIG.table);
-    this.td;
-    this.db = [];
-    this.chosen = [];
 
     // next
     this.buttonNext = document.querySelector(this.CONFIG.buttonNext);
   }
 
-  Ghostbuster.prototype.start = function() {
-    this.resetLevels(); // Maybe I can remove this after
+  Ghostbuster.prototype.startGame = function() {
     this.selectLevel(this.CONFIG.level);
-    this.button.click();
-    this.jogar();
+    this.buttonStart.click();
+    this.play();
   }
 
-  Ghostbuster.prototype.jogar = function() {
-    this.chosen = [];
-    ++this.CONFIG.jogada
+  Ghostbuster.prototype.play = function() {
+    this.emptyChoices();
     this.delay(this.getBlocos, 1000)
-    this.delay(this.choice, 1000);
+    this.run();
+  }
+
+  Ghostbuster.prototype.shot = function() {
+    this.CONFIG.shot++;
+  }
+
+  Ghostbuster.prototype.run = function() {
+    this.delay(this.firstChoice, 1000);
+    this.delay(this.secondChoice, 1000);
+    this.delay(this.more, 1000);
+  }
+
+  Ghostbuster.prototype.more = function() {
+    if(this.isFinishedPlay()) {
+      this.run();
+    } else if(this.isFinishedGame()) {
+      this.shot();
+      this.delay(this.next, 1500);
+      this.delay(this.again, 1500);
+    } 
+  }
+
+  Ghostbuster.prototype.isFinishedGame = function() {
+    return this.CONFIG.shot < this.levels.length;
+  }
+
+  Ghostbuster.prototype.isFinishedPlay = function() {
+    return this.chosen.length !== this.obj.length;
+  }
+
+  Ghostbuster.prototype.emptyChoices = function() {
+    this.chosen = [];
   }
 
   Ghostbuster.prototype.delay = function(fn, time) {
     root.setTimeout(fn.bind(this), time);
   };
 
-  Ghostbuster.prototype.choice = function() {
-    var teste = true;
+  Ghostbuster.prototype.random = function() {
+    return Math.floor(Math.random() * this.obj.length);
+  }
+
+  Ghostbuster.prototype.hasChosen = function(random) {
+    return this.chosen.indexOf(random) == -1;
+  }
+
+  Ghostbuster.prototype.isMatched = function(random) {
+    return this.hasClass(this.obj[random], this.CONFIG.isMatched);
+  }
+
+  Ghostbuster.prototype.firstChoice = function() {
     var random;
-    var choice;
+    var flag = true;
 
-    while(teste) {
-      random = Math.floor(Math.random() * this.td.length);
-      if(this.chosen.indexOf(random) == -1 && !this.hasClass(this.td[random], 'is-matched')) {
+    while(flag) {
+      random = this.random();
+      if(this.hasChosen(random) && !this.isMatched(random)) {
         this.chosen.push(random)
-        console.log(this.chosen);
-
-        teste = false
+        flag = false
       }
     }
 
-    choice = this.td[random];
+    this.choice = this.obj[random];
+    this.choice.click();
+  }
 
-    choice.click();
+  Ghostbuster.prototype.secondChoice = function() {
+    this.forEach(this.obj, this.compare.bind(this));
+  }
 
-    [].forEach.call(this.td, function(x) {
-      if(choice.id !== x.id && choice.id.slice(-1) === x.id.slice(-1)) {
-        this.chosen.push([].indexOf.call(this.td, x));
-        console.log(this.chosen);
-        x.click();
-      }
-    }.bind(this));
+  Ghostbuster.prototype.idDifferent = function(item) {
+    return this.choice.id !== item.id;
+  }
 
+  Ghostbuster.prototype.hasPattern = function(item) {
+    return this.choice.id.slice(-1) === item.id.slice(-1);
+  }
 
-
-    if(this.chosen.length !== this.td.length) {
-      this.delay(this.choice, 1000);
-    } else if(this.CONFIG.jogada < this.levels.length) {
-      // console.log('novamente ', this.CONFIG.jogada)
-      this.delay(this.next, 1500);
-      this.delay(this.again, 1500);
+  Ghostbuster.prototype.compare = function(choice) {
+    if(this.idDifferent(choice) && this.hasPattern(choice)) {
+      this.chosen.push([].indexOf.call(this.obj, choice));
+      choice.click();
     }
   }
 
   Ghostbuster.prototype.again = function() {
-    this.jogar();
+    this.play();
   }
 
   Ghostbuster.prototype.next = function() {
@@ -102,25 +137,16 @@
   }
 
   Ghostbuster.prototype.getBlocos = function() {
-    this.td = this.table.querySelectorAll(this.CONFIG.td);
+    this.obj = this.table.querySelectorAll(this.CONFIG.td);
   }
 
   Ghostbuster.prototype.selectLevel = function(level) {
     this.setAtt(this.levels.item(level - 1), this.CONFIG.selected);
   }
 
-  Ghostbuster.prototype.resetLevels = function() {
-    this.forEach(this.levels, this.removeAtt.bind(this, this.CONFIG.selected));
-  }
-
-
   // TOOLS
   Ghostbuster.prototype.setAtt = function(el, attr) {
     el.setAttribute(attr, attr);
-  }
-
-  Ghostbuster.prototype.removeAtt = function(attr, el, w) {
-    el.removeAttribute(attr);
   }
 
   Ghostbuster.prototype.forEach = function(el, fn) {
